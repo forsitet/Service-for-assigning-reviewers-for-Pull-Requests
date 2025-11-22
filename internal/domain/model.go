@@ -32,3 +32,9 @@ type PullRequest struct {
 func (p PullRequest) IsMerged() bool {
 	return p.Status == PRStatusMerged
 }
+
+type TeamDeactivationResult struct {
+	TeamName            string
+	DeactivatedUsers    int
+	UpdatedPullRequests int
+}

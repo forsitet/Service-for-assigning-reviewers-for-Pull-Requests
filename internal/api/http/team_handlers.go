@@ -51,3 +51,41 @@ func (s *Server) HandleTeamGet(w http.ResponseWriter, r *http.Request) {
 	resp := converter.TeamToOpenAPI(team)
 	s.writeJSON(w, http.StatusOK, resp)
 }
+
+type deactivateTeamRequest struct {
+	TeamName string `json:"team_name"`
+}
+
+type deactivateTeamResponse struct {
+	TeamName            string `json:"team_name"`
+	DeactivatedUsers    int    `json:"deactivated_users"`
+	UpdatedPullRequests int    `json:"updated_pull_requests"`
+}
+
+func (s *Server) HandleTeamDeactivate(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	var req deactivateTeamRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
+		return
+	}
+	if req.TeamName == "" {
+		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "team_name is required")
+		return
+	}
+
+	res, err := s.app.PR.DeactivateTeamAndReassignOpenPRs(r.Context(), req.TeamName)
+	if err != nil {
+		s.handleError(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	resp := deactivateTeamResponse{
+		TeamName:            res.TeamName,
+		DeactivatedUsers:    res.DeactivatedUsers,
+		UpdatedPullRequests: res.UpdatedPullRequests,
+	}
+
+	s.writeJSON(w, http.StatusOK, resp)
+}
