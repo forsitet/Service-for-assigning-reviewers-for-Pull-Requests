@@ -1,0 +1,13 @@
+#vscode
+.history
+.vscode
+
+#goenv
+.go-version
+
+# go.work
+go.work
+go.work.sum
+
+# jetbrains
+.idea

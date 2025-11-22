@@ -1,0 +1,8 @@
+services:
+  reviwer-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reviwer-service
+    ports:
+      - "8080:8080"
