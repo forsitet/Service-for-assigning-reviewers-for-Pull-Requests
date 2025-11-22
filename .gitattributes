@@ -1,0 +1,6 @@
+*.gen.go -diff
+*.sql.go -diff
+*.enum.go -diff
+*pb.go -diff
+*pb.validate.go -diff
+go sum -diff
