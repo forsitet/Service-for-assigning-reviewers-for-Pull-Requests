@@ -3,4 +3,4 @@
 *.enum.go -diff
 *pb.go -diff
 *pb.validate.go -diff
-go sum -diff
+go.sum -diff
