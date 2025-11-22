@@ -6,3 +6,36 @@ services:
     container_name: reviwer-service
     ports:
       - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: postgres:16
+    container_name: reviewer-db
+    environment:
+      POSTGRES_DB: reviewer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reviewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  pgadmin4:
+    image: elestio/pgadmin:latest
+    container_name: pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: denisbudin2004@mail.ru
+      PGADMIN_DEFAULT_PASSWORD: 12345
+    ports:
+      - "5050:80"
+    volumes:
+      - ./.dev/pgadmin/servers.json:/pgadmin4/servers.json
+
+volumes:
+  pgdata:

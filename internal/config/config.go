@@ -12,8 +12,18 @@ type HTTPConfig struct {
 	Addr string `yaml:"addr"`
 }
 
+type DatabaseConfig struct {
+	Host     string `yaml:"host"`
+	Port     int    `yaml:"port"`
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"name"`
+	SSLMode  string `yaml:"ssl_mode"`
+}
+
 type Config struct {
-	HTTP *HTTPConfig `yaml:"http"`
+	HTTP *HTTPConfig    `yaml:"http"`
+	DB   DatabaseConfig `yaml:"database"`
 }
 
 func (c Config) HTTPAddr() string {
@@ -21,6 +31,33 @@ func (c Config) HTTPAddr() string {
 		return ":8080"
 	}
 	return c.HTTP.Addr
+}
+
+func (db DatabaseConfig) ConnString() string {
+	host := db.Host
+	if host == "" {
+		host = "localhost"
+	}
+
+	port := db.Port
+	if port == 0 {
+		port = 5432
+	}
+
+	sslMode := db.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		db.User,
+		db.Password,
+		host,
+		port,
+		db.Name,
+		sslMode,
+	)
 }
 
 func load(path string) (*Config, error) {
@@ -33,6 +70,11 @@ func load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(data, cfg); err != nil {
 		return &Config{}, fmt.Errorf("unmarshal config yaml: %w", err)
 	}
+
+	if cfg.DB.User == "" || cfg.DB.Password == "" {
+		return &Config{}, fmt.Errorf("database user and password must be set in config")
+	}
+
 	return cfg, nil
 }
 
