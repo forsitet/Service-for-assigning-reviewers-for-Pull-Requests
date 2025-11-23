@@ -40,4 +40,4 @@ jobs:
 
       - name: Check imports formatting with gci
         run: |
-          gci diff --skip-generated -s Standard -s Default -s "Prefix(people)" . || (echo "Imports are not formatted with gci. Run 'make format' to fix." && exit 1)
+          gci diff --skip-generated -s Standard -s Default -s localmodule . || (echo "Imports are not formatted with gci. Run 'make format' to fix." && exit 1)

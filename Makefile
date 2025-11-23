@@ -31,7 +31,7 @@ format: init
 	$(GOBIN)/gofumpt -w .
 
 	@echo "Formatting imports with gci..."
-	$(GOBIN)/gci write --skip-generated -s Standard -s Default -s "Prefix(people)" .
+	$(GOBIN)/gci write --skip-generated -s Standard -s Default -s localmodule .
 
 check-format: init
 	@echo "Checking formatting..."

@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/migrations"
 	"github.com/pressly/goose/v3"
+
+	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/migrations"
 )
 
 func RunMigrations(ctx context.Context, db *sql.DB, logger *slog.Logger) error {
