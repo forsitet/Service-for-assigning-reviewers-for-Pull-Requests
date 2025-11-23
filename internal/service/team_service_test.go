@@ -11,16 +11,16 @@ import (
 
 func TestTeamService_CreateTeam(t *testing.T) {
 	tests := []struct {
-		name              string
-		teamName          string
-		members           []domain.User
-		mockExists        bool
-		mockExistsErr     error
-		mockCreateErr     error
-		mockUpsertErr     error
-		wantErr           bool
-		wantErrCode       domain.ErrorCode
-		validateResult    func(t *testing.T, team *domain.Team)
+		name           string
+		teamName       string
+		members        []domain.User
+		mockExists     bool
+		mockExistsErr  error
+		mockCreateErr  error
+		mockUpsertErr  error
+		wantErr        bool
+		wantErrCode    domain.ErrorCode
+		validateResult func(t *testing.T, team *domain.Team)
 	}{
 		{
 			name:     "успешное создание команды",
@@ -30,7 +30,7 @@ func TestTeamService_CreateTeam(t *testing.T) {
 				{ID: "user-2", Username: "user2", IsActive: true},
 			},
 			mockExists: false,
-			wantErr:   false,
+			wantErr:    false,
 			validateResult: func(t *testing.T, team *domain.Team) {
 				if team.Name != "team-1" {
 					t.Errorf("expected team name team-1, got %s", team.Name)
@@ -51,16 +51,16 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			members: []domain.User{
 				{ID: "user-1", Username: "user1", IsActive: true},
 			},
-			mockExists: true,
-			wantErr:   true,
+			mockExists:  true,
+			wantErr:     true,
 			wantErrCode: domain.ErrorCodeTeamExists,
 		},
 		{
-			name:        "ошибка при проверке существования команды",
-			teamName:    "team-1",
-			members:     []domain.User{},
+			name:          "ошибка при проверке существования команды",
+			teamName:      "team-1",
+			members:       []domain.User{},
 			mockExistsErr: errors.New("database error"),
-			wantErr:     true,
+			wantErr:       true,
 		},
 		{
 			name:     "ошибка при создании команды",
@@ -68,9 +68,9 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			members: []domain.User{
 				{ID: "user-1", Username: "user1", IsActive: true},
 			},
-			mockExists:  false,
+			mockExists:    false,
 			mockCreateErr: errors.New("create error"),
-			wantErr:    true,
+			wantErr:       true,
 		},
 		{
 			name:     "ошибка при добавлении членов команды",
@@ -78,16 +78,16 @@ func TestTeamService_CreateTeam(t *testing.T) {
 			members: []domain.User{
 				{ID: "user-1", Username: "user1", IsActive: true},
 			},
-			mockExists:  false,
+			mockExists:    false,
 			mockUpsertErr: errors.New("upsert error"),
-			wantErr:    true,
+			wantErr:       true,
 		},
 		{
-			name:     "создание команды без членов",
-			teamName: "team-1",
-			members:  []domain.User{},
+			name:       "создание команды без членов",
+			teamName:   "team-1",
+			members:    []domain.User{},
 			mockExists: false,
-			wantErr:  false,
+			wantErr:    false,
 			validateResult: func(t *testing.T, team *domain.Team) {
 				if team.Name != "team-1" {
 					t.Errorf("expected team name team-1, got %s", team.Name)
@@ -108,7 +108,7 @@ func TestTeamService_CreateTeam(t *testing.T) {
 				{ID: "user-5", Username: "user5", IsActive: true},
 			},
 			mockExists: false,
-			wantErr:   false,
+			wantErr:    false,
 			validateResult: func(t *testing.T, team *domain.Team) {
 				if len(team.Members) != 5 {
 					t.Errorf("expected 5 members, got %d", len(team.Members))
@@ -191,10 +191,10 @@ func TestTeamService_GetTeam(t *testing.T) {
 			},
 		},
 		{
-			name:     "команда не найдена",
-			teamName: "team-999",
+			name:       "команда не найдена",
+			teamName:   "team-999",
 			mockGetErr: errors.New("team not found"),
-			wantErr:  true,
+			wantErr:    true,
 		},
 		{
 			name:     "команда без членов",
@@ -214,10 +214,10 @@ func TestTeamService_GetTeam(t *testing.T) {
 			},
 		},
 		{
-			name:        "ошибка базы данных",
-			teamName:    "team-1",
-			mockGetErr:  errors.New("database error"),
-			wantErr:     true,
+			name:       "ошибка базы данных",
+			teamName:   "team-1",
+			mockGetErr: errors.New("database error"),
+			wantErr:    true,
 		},
 		{
 			name:     "команда с неактивными членами",
@@ -277,4 +277,3 @@ func TestTeamService_GetTeam(t *testing.T) {
 		})
 	}
 }
-

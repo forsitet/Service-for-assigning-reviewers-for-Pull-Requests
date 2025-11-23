@@ -13,4 +13,3 @@ type MockTeamUserRepository struct {
 func (m *MockTeamUserRepository) UpsertForTeam(ctx context.Context, teamName string, users []domain.User) error {
 	return m.UpsertErr
 }
-

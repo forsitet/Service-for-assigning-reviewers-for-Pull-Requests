@@ -20,4 +20,3 @@ func (m *MockUserRepository) GetByID(ctx context.Context, id string) (*domain.Us
 func (m *MockUserRepository) SetIsActive(ctx context.Context, id string, active bool) (*domain.User, error) {
 	return m.SetIsActiveResult, m.SetIsActiveErr
 }
-

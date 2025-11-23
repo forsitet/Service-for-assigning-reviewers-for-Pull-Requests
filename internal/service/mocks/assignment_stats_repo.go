@@ -18,4 +18,3 @@ func (m *MockAssignmentStatsRepo) CountAssignmentsByReviewer(ctx context.Context
 func (m *MockAssignmentStatsRepo) CountAssignmentsByPR(ctx context.Context) (map[string]int64, error) {
 	return m.CountByPRResult, m.CountByPRErr
 }
-

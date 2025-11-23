@@ -25,4 +25,3 @@ func (m *MockTeamRepository) Exists(ctx context.Context, name string) (bool, err
 func (m *MockTeamRepository) GetWithMembers(ctx context.Context, name string) (*domain.Team, error) {
 	return m.GetWithMembersResult, m.GetWithMembersErr
 }
-

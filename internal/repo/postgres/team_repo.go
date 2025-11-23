@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/domain"
@@ -34,7 +35,7 @@ func (r *TeamRepo) Exists(ctx context.Context, name string) (bool, error) {
 		name,
 	).Scan(&dummy)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
 		}
 		return false, fmt.Errorf("check team exists: %w", err)
@@ -65,7 +66,11 @@ func (r *TeamRepo) GetWithMembers(ctx context.Context, name string) (*domain.Tea
 	if err != nil {
 		return nil, fmt.Errorf("list team members: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	members := make([]domain.User, 0)
 	for rows.Next() {
