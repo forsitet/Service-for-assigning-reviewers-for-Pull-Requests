@@ -28,9 +28,6 @@ jobs:
       - name: Install gofumpt
         run: go install mvdan.cc/gofumpt@latest
 
-      - name: Install gci
-        run: go install github.com/daixiang0/gci@latest
-
       - name: Check code formatting with gofumpt
         run: |
           if [ -n "$(gofumpt -l .)" ]; then
