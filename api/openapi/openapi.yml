@@ -8,6 +8,7 @@ tags:
   - name: Users
   - name: PullRequests
   - name: Health
+  - name: Stats
 
 components:
   parameters:
@@ -419,3 +420,65 @@ paths:
                     pull_request_name: Add search
                     author_id: u1
                     status: OPEN
+  /stats/assignments:
+    get:
+      tags: [Stats]
+      summary: Получить статистику назначений ревьюверов
+      responses:
+        '200':
+          description: Статистика назначений по пользователям и PR
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - by_user
+                  - by_pull_request
+                properties:
+                  by_user:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - user_id
+                        - assignments
+                      properties:
+                        user_id:
+                          type: string
+                        assignments:
+                          type: integer
+                          format: int64
+                  by_pull_request:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - pull_request_id
+                        - assignments
+                      properties:
+                        pull_request_id:
+                          type: string
+                        assignments:
+                          type: integer
+                          format: int64
+              example:
+                by_user:
+                  - user_id: u1
+                    assignments: 3
+                  - user_id: u2
+                    assignments: 5
+                by_pull_request:
+                  - pull_request_id: pr-1001
+                    assignments: 2
+                  - pull_request_id: pr-1002
+                    assignments: 1
+        '500':
+          description: Внутренняя ошибка сервиса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: NOT_FOUND
+                  message: internal server error

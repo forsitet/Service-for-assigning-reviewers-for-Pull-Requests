@@ -5,6 +5,7 @@ init:
 	go mod tidy
 
 gen-oapi:
+	make init
 	echo "Generating Go code from OpenAPI specification..."
 	oapi-codegen \
 	-generate types,server \

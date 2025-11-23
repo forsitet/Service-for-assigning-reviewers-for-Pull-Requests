@@ -30,5 +30,7 @@ func NewRouter(server *Server, logger *slog.Logger) http.Handler {
 	r.Get("/openapi.yaml", server.ServeOpenAPISpec)
 	r.Get("/swagger", server.SwaggerUI)
 
+	r.Get("/stats/assignments", server.HandleStatsAssignments)
+
 	return r
 }

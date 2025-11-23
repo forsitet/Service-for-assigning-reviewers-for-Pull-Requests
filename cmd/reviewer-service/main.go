@@ -51,8 +51,9 @@ func main() {
 	teamService := service.NewTeamService(teamRepo, userRepo)
 	userService := service.NewUserService(userRepo, prRepo)
 	prService := service.NewPRService(prRepo, userRepo, time.Now)
+	statsService := service.NewStatsService(prRepo)
 
-	app := service.NewApp(teamService, userService, prService)
+	app := service.NewApp(teamService, userService, prService, statsService)
 
 	server := apihttp.NewServer(app, logger)
 	router := apihttp.NewRouter(server, logger)
