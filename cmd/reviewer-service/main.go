@@ -39,7 +39,7 @@ func main() {
 			logger.Error("failed to close db", "error", err.Error())
 		}
 	}()
-	if err := postgres.InitTables(ctx, db, logger); err != nil {
+	if err := postgres.RunMigrations(ctx, db, logger); err != nil {
 		logger.Error("failed to init db schema", "error", err.Error())
 		os.Exit(1)
 	}
