@@ -19,6 +19,7 @@ func NewRouter(server *Server, logger *slog.Logger) http.Handler {
 
 	r.Post("/team/add", server.HandleTeamAdd)
 	r.Get("/team/get", server.HandleTeamGet)
+	r.Post("/team/deactivate", server.HandleTeamDeactivate)
 
 	r.Post("/users/setIsActive", server.HandleUserSetIsActive)
 	r.Get("/users/getReview", server.HandleUserGetReview)
