@@ -17,6 +17,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=builder /app/reviewer-service /usr/local/bin/reviewer-service
 COPY --from=builder /app/internal/config /config
+COPY --from=builder /app/api/openapi /app/api/openapi
 
 RUN chown -R appuser:appgroup /app
 

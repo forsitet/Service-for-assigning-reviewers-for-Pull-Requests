@@ -15,8 +15,8 @@ type Team struct {
 type PRStatus string
 
 const (
-	PRStatusOpen   PRStatus = "open"
-	PRStatusMerged PRStatus = "merged"
+	PRStatusOpen   PRStatus = "OPEN"
+	PRStatusMerged PRStatus = "MERGED"
 )
 
 type PullRequest struct {

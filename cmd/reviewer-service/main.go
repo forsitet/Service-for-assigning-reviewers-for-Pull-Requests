@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
+	apihttp "github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/api/http"
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/config"
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/repo/postgres"
+	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/service"
 )
 
 func main() {
@@ -39,5 +42,31 @@ func main() {
 		os.Exit(1)
 	}
 
+	teamRepo := postgres.NewTeamRepo(db)
+	userRepo := postgres.NewUserRepo(db)
+	prRepo := postgres.NewPRRepo(db)
+
+	teamService := service.NewTeamService(teamRepo, userRepo)
+	userService := service.NewUserService(userRepo, prRepo)
+	prService := service.NewPRService(prRepo, userRepo, time.Now)
+
+	app := service.NewApp(teamService, userService, prService)
+
+	server := apihttp.NewServer(app, logger)
+	router := apihttp.NewRouter(server, logger)
+
+	srv := &http.Server{
+		Addr:         cfg.HTTPAddr(),
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	logger.Info("http server starting", "addr", cfg.HTTPAddr())
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Error("http server failed", "error", err)
+		os.Exit(1)
+	}
 	// TODO: Сделать Грейсфулл Шатдаун
 }
