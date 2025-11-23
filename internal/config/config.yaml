@@ -1,2 +1,9 @@
 http:
   addr: ":8080"
+database:
+  host: "db"
+  port: 5432
+  user: postgres
+  password: "12345"
+  name: "reviewer"
+  sslmode: "disable"
