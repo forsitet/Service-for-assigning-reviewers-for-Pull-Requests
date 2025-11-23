@@ -160,6 +160,9 @@ type ServerInterface interface {
 	// Переназначить конкретного ревьювера на другого из его команды
 	// (POST /pullRequest/reassign)
 	PostPullRequestReassign(ctx echo.Context) error
+	// Получить статистику назначений ревьюверов
+	// (GET /stats/assignments)
+	GetStatsAssignments(ctx echo.Context) error
 	// Создать команду с участниками (создаёт/обновляет пользователей)
 	// (POST /team/add)
 	PostTeamAdd(ctx echo.Context) error
@@ -203,6 +206,15 @@ func (w *ServerInterfaceWrapper) PostPullRequestReassign(ctx echo.Context) error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostPullRequestReassign(ctx)
+	return err
+}
+
+// GetStatsAssignments converts echo context to params.
+func (w *ServerInterfaceWrapper) GetStatsAssignments(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetStatsAssignments(ctx)
 	return err
 }
 
@@ -291,6 +303,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/pullRequest/create", wrapper.PostPullRequestCreate)
 	router.POST(baseURL+"/pullRequest/merge", wrapper.PostPullRequestMerge)
 	router.POST(baseURL+"/pullRequest/reassign", wrapper.PostPullRequestReassign)
+	router.GET(baseURL+"/stats/assignments", wrapper.GetStatsAssignments)
 	router.POST(baseURL+"/team/add", wrapper.PostTeamAdd)
 	router.GET(baseURL+"/team/get", wrapper.GetTeamGet)
 	router.GET(baseURL+"/users/getReview", wrapper.GetUsersGetReview)
