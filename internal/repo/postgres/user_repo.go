@@ -28,6 +28,11 @@ func (r *UserRepo) UpsertForTeam(ctx context.Context, teamName string, users []d
 	stmt := `
 INSERT INTO users (id, username, team_name, is_active)
 VALUES ($1, $2, $3, $4)
+ON CONFLICT (id) DO UPDATE
+SET username = EXCLUDED.username,
+    team_name = EXCLUDED.team_name,
+    is_active = EXCLUDED.is_active,
+    updated_at = now()
 `
 	for _, u := range users {
 		if _, err := tx.ExecContext(ctx, stmt,
