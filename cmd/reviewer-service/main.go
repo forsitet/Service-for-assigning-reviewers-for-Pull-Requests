@@ -5,6 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	apihttp "github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/api/http"
@@ -63,10 +65,26 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	logger.Info("http server starting", "addr", cfg.HTTPAddr())
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Error("http server failed", "error", err)
-		os.Exit(1)
+	go func() {
+		logger.Info("http server starting", "addr", cfg.HTTPAddr())
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("http server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	<-stop
+	logger.Info("shutting down reviewer-service")
+
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Error("http server shutdown error", "error", err)
+	} else {
+		logger.Info("http server stopped gracefully")
 	}
-	// TODO: Сделать Грейсфулл Шатдаун
 }
