@@ -1,9 +1,8 @@
 package http
 
 import (
-	"net/http"
-
 	"log/slog"
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )

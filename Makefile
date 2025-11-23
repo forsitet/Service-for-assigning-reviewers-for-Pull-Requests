@@ -1,28 +1,43 @@
+# Определяем, где лежат бинарники Go-инструментов
+GOBIN := $(shell go env GOBIN)
+ifeq ($(GOBIN),)
+GOBIN := $(shell go env GOPATH)/bin
+endif
+
+.PHONY: init gen-oapi lint format check-format
+
 init:
-	echo "Initializing project dependencies..."
-	go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
-	go get -tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
-	go install tool
+	@echo "Initializing project tools..."
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+	go install mvdan.cc/gofumpt@v0.6.0
+	go install github.com/daixiang0/gci@v0.13.7
 	go mod tidy
 
-gen-oapi:
-	make init
-	echo "Generating Go code from OpenAPI specification..."
-	oapi-codegen \
-	-generate types,server \
-	-o ./api/openapi/openapi.gen.go \
-	-package openapi \
-	./api/openapi/openapi.yml
+gen-oapi: init
+	@echo "Generating Go code from OpenAPI specification..."
+	$(GOBIN)/oapi-codegen \
+		-generate types,server \
+		-o ./api/openapi/openapi.gen.go \
+		-package openapi \
+		./api/openapi/openapi.yml
 
-lint: check-format
-	echo "Linter"
-	go tool golangci-lint run ./...
+lint: init check-format
+	@echo "Linter"
+	$(GOBIN)/golangci-lint run ./...
 
-format:
-	echo "Formatting code..."
-	go tool golangci-lint fmt
+format: init
+	@echo "Formatting code with gofumpt..."
+	$(GOBIN)/gofumpt -w .
 
-check-format: 
-	echo "Checking formatting..."
-	go tool golangci-lint fmt --diff > /dev/null || \
-	(echo "Found unforamtted files. Run 'make format' to fix them"; exit 1)
+	@echo "Formatting imports with gci..."
+	$(GOBIN)/gci write --skip-generated -s Standard -s Default -s "Prefix(people)" .
+
+check-format: init
+	@echo "Checking formatting..."
+	@changed="$$( $(GOBIN)/gofumpt -l . )"; \
+	if [ -n "$$changed" ]; then \
+		echo "Code is not formatted with gofumpt. Run 'make format' to fix."; \
+		echo "$$changed"; \
+		exit 1; \
+	fi
