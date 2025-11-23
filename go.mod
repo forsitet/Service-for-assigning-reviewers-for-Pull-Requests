@@ -3,6 +3,7 @@ module github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests
 go 1.24.3
 
 require (
+	github.com/go-chi/chi/v5 v5.2.3
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/oapi-codegen/runtime v1.1.2
