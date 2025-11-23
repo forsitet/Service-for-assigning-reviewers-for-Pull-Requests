@@ -226,7 +226,7 @@ paths:
   /team/deactivate:
     post:
       tags: [Teams]
-      summary: Deactivate all users in team and safely reassign open PR reviewers
+      summary: Деактивировать всех участников команды
       operationId: deactivateTeam
       requestBody:
         required: true
