@@ -11,6 +11,10 @@ import (
 func NewRouter(server *Server, logger *slog.Logger) http.Handler {
 	r := chi.NewRouter()
 
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/swagger", http.StatusTemporaryRedirect)
+	})
+
 	r.Get("/healthz", server.HealthCheck)
 
 	r.Post("/team/add", server.HandleTeamAdd)
