@@ -294,3 +294,18 @@ func (r *PRRepo) loadReviewers(ctx context.Context, prID string) ([]string, erro
 
 	return reviewers, nil
 }
+
+func (r *PRRepo) Exists(ctx context.Context, id string) (bool, error) {
+	var dummy string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT id FROM pull_requests WHERE id = $1`,
+		id,
+	).Scan(&dummy)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("check PR exists: %w", err)
+	}
+	return true, nil
+}
