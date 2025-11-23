@@ -36,6 +36,19 @@ services:
       - "5050:80"
     volumes:
       - ./.dev/pgadmin/servers.json:/pgadmin4/servers.json
+  db_test:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: reviewer-db_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 12345
+    ports:
+      - "5555:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reviewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
