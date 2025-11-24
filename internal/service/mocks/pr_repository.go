@@ -8,20 +8,20 @@ import (
 )
 
 type MockPRRepository struct {
-	ExistsResult       bool
-	ExistsErr          error
-	CreateErr          error
-	GetByIDResult      *domain.PullRequest
-	GetByIDReviewers   []string
-	GetByIDErr         error
-	SetMergedResult    *domain.PullRequest
-	SetMergedReviewers []string
-	SetMergedErr       error
-	UpdateResult       *domain.PullRequest
+	ExistsResult          bool
+	ExistsErr             error
+	CreateErr             error
+	GetByIDResult         *domain.PullRequest
+	GetByIDReviewers      []string
+	GetByIDErr            error
+	SetMergedResult       *domain.PullRequest
+	SetMergedReviewers    []string
+	SetMergedErr          error
+	UpdateResult          *domain.PullRequest
 	UpdateReviewersResult []string
-	UpdateErr          error
-	DeactivateResult   domain.TeamDeactivationResult
-	DeactivateErr      error
+	UpdateErr             error
+	DeactivateResult      domain.TeamDeactivationResult
+	DeactivateErr         error
 }
 
 func (m *MockPRRepository) CreateWithReviewers(ctx context.Context, pr *domain.PullRequest, reviewerIDs []string) error {
@@ -51,4 +51,3 @@ func (m *MockPRRepository) Exists(ctx context.Context, id string) (bool, error) 
 func (m *MockPRRepository) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName string) (domain.TeamDeactivationResult, error) {
 	return m.DeactivateResult, m.DeactivateErr
 }
-

@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/internal/domain"
@@ -18,20 +19,89 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		return result, fmt.Errorf("begin tx deactivate team %s: %w", teamName, err)
 	}
 	defer func() {
+		// #nosec G104 -- error is ignored in defer rollback
 		_ = tx.Rollback()
 	}()
 
+	if err := r.checkTeamExists(ctx, tx, teamName); err != nil {
+		return result, err
+	}
+
+	deactivatedIDs, err := r.deactivateUsers(ctx, tx, teamName)
+	if err != nil {
+		return result, err
+	}
+
+	result.DeactivatedUsers = len(deactivatedIDs)
+	if len(deactivatedIDs) == 0 {
+		if err := tx.Commit(); err != nil {
+			return result, fmt.Errorf("commit empty deactivation tx: %w", err)
+		}
+		return result, nil
+	}
+
+	prMap, err := r.loadAffectedPRs(ctx, tx, deactivatedIDs)
+	if err != nil {
+		return result, err
+	}
+
+	if len(prMap) == 0 {
+		if err := tx.Commit(); err != nil {
+			return result, fmt.Errorf("commit tx without pr updates: %w", err)
+		}
+		return result, nil
+	}
+
+	if err := r.loadCurrentReviewers(ctx, tx, prMap); err != nil {
+		return result, err
+	}
+
+	authorTeam, err := r.loadAuthorTeams(ctx, tx, prMap)
+	if err != nil {
+		return result, err
+	}
+
+	candidatesByTeam, err := r.loadCandidates(ctx, tx, authorTeam)
+	if err != nil {
+		return result, err
+	}
+
+	newReviewersByPR := r.calculateNewReviewers(prMap, authorTeam, candidatesByTeam)
+
+	if err := r.updatePRReviewers(ctx, tx, newReviewersByPR); err != nil {
+		return result, err
+	}
+
+	result.UpdatedPullRequests = len(newReviewersByPR)
+
+	if err := tx.Commit(); err != nil {
+		return result, fmt.Errorf("commit deactivate team tx: %w", err)
+	}
+
+	return result, nil
+}
+
+type prInfo struct {
+	authorID    string
+	deactivated map[string]struct{}
+	current     []string
+}
+
+func (r *PRRepo) checkTeamExists(ctx context.Context, tx *sql.Tx, teamName string) error {
 	var tmp string
 	if err := tx.QueryRowContext(ctx,
 		`SELECT name FROM teams WHERE name = $1`,
 		teamName,
 	).Scan(&tmp); err != nil {
-		if err == sql.ErrNoRows {
-			return result, domain.NewDomainError(domain.ErrorCodeNotFound, "team not found")
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.NewDomainError(domain.ErrorCodeNotFound, "team not found")
 		}
-		return result, fmt.Errorf("check team exists: %w", err)
+		return fmt.Errorf("check team exists: %w", err)
 	}
+	return nil
+}
 
+func (r *PRRepo) deactivateUsers(ctx context.Context, tx *sql.Tx, teamName string) ([]string, error) {
 	deactivatedIDs := make([]string, 0)
 	rows, err := tx.QueryContext(ctx,
 		`UPDATE users
@@ -42,48 +112,45 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		teamName,
 	)
 	if err != nil {
-		return result, fmt.Errorf("deactivate users of team %s: %w", teamName, err)
+		return nil, fmt.Errorf("deactivate users of team %s: %w", teamName, err)
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
+
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			return result, fmt.Errorf("scan deactivated user id: %w", err)
+			return nil, fmt.Errorf("scan deactivated user id: %w", err)
 		}
 		deactivatedIDs = append(deactivatedIDs, id)
 	}
 	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("iterate deactivated user ids: %w", err)
+		return nil, fmt.Errorf("iterate deactivated user ids: %w", err)
 	}
-	rows.Close()
+	return deactivatedIDs, nil
+}
 
-	result.DeactivatedUsers = len(deactivatedIDs)
-	if len(deactivatedIDs) == 0 {
-		if err := tx.Commit(); err != nil {
-			return result, fmt.Errorf("commit empty deactivation tx: %w", err)
-		}
-		return result, nil
-	}
-
+func (r *PRRepo) loadAffectedPRs(ctx context.Context, tx *sql.Tx, deactivatedIDs []string) (map[string]*prInfo, error) {
 	query, args := buildInClause(`
         SELECT p.id, p.author_id, r.reviewer_id
         FROM pull_request_reviewers r
         JOIN pull_requests p ON p.id = r.pr_id
         WHERE p.status = 'OPEN' AND r.reviewer_id IN (`, deactivatedIDs)
 
-	rows, err = tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		return result, fmt.Errorf("select affected pull requests: %w", err)
+		return nil, fmt.Errorf("select affected pull requests: %w", err)
 	}
-
-	type prInfo struct {
-		authorID    string
-		deactivated map[string]struct{}
-		current     []string
-	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	prMap := make(map[string]*prInfo)
-
 	for rows.Next() {
 		var (
 			prID       string
@@ -91,8 +158,7 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 			reviewerID string
 		)
 		if err := rows.Scan(&prID, &authorID, &reviewerID); err != nil {
-			rows.Close()
-			return result, fmt.Errorf("scan affected pr row: %w", err)
+			return nil, fmt.Errorf("scan affected pr row: %w", err)
 		}
 
 		info, ok := prMap[prID]
@@ -107,41 +173,39 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		info.deactivated[reviewerID] = struct{}{}
 	}
 	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("iterate affected prs: %w", err)
+		return nil, fmt.Errorf("iterate affected prs: %w", err)
 	}
-	rows.Close()
+	return prMap, nil
+}
 
-	if len(prMap) == 0 {
-		if err := tx.Commit(); err != nil {
-			return result, fmt.Errorf("commit tx without pr updates: %w", err)
-		}
-		return result, nil
-	}
-
+func (r *PRRepo) loadCurrentReviewers(ctx context.Context, tx *sql.Tx, prMap map[string]*prInfo) error {
 	prIDs := make([]string, 0, len(prMap))
-	authorSet := make(map[string]struct{})
-	for prID, info := range prMap {
+	for prID := range prMap {
 		prIDs = append(prIDs, prID)
-		authorSet[info.authorID] = struct{}{}
 	}
 
-	query, args = buildInClause(`
+	query, args := buildInClause(`
         SELECT pr_id, reviewer_id
         FROM pull_request_reviewers
         WHERE pr_id IN (`, prIDs)
 
-	rows, err = tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		return result, fmt.Errorf("load current reviewers: %w", err)
+		return fmt.Errorf("load current reviewers: %w", err)
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
+
 	for rows.Next() {
 		var (
 			prID       string
 			reviewerID string
 		)
 		if err := rows.Scan(&prID, &reviewerID); err != nil {
-			rows.Close()
-			return result, fmt.Errorf("scan current reviewer: %w", err)
+			return fmt.Errorf("scan current reviewer: %w", err)
 		}
 		info, ok := prMap[prID]
 		if !ok {
@@ -149,25 +213,34 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		}
 		info.current = append(info.current, reviewerID)
 	}
-	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("iterate current reviewers: %w", err)
+	return rows.Err()
+}
+
+func (r *PRRepo) loadAuthorTeams(ctx context.Context, tx *sql.Tx, prMap map[string]*prInfo) (map[string]string, error) {
+	authorSet := make(map[string]struct{})
+	for _, info := range prMap {
+		authorSet[info.authorID] = struct{}{}
 	}
-	rows.Close()
 
 	authorIDs := make([]string, 0, len(authorSet))
 	for id := range authorSet {
 		authorIDs = append(authorIDs, id)
 	}
 
-	query, args = buildInClause(`
+	query, args := buildInClause(`
         SELECT id, team_name
         FROM users
         WHERE id IN (`, authorIDs)
 
-	rows, err = tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		return result, fmt.Errorf("load authors' teams: %w", err)
+		return nil, fmt.Errorf("load authors' teams: %w", err)
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	authorTeam := make(map[string]string)
 	for rows.Next() {
@@ -176,16 +249,17 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 			teamName string
 		)
 		if err := rows.Scan(&id, &teamName); err != nil {
-			rows.Close()
-			return result, fmt.Errorf("scan author team: %w", err)
+			return nil, fmt.Errorf("scan author team: %w", err)
 		}
 		authorTeam[id] = teamName
 	}
 	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("iterate authors' teams: %w", err)
+		return nil, fmt.Errorf("iterate authors' teams: %w", err)
 	}
-	rows.Close()
+	return authorTeam, nil
+}
 
+func (r *PRRepo) loadCandidates(ctx context.Context, tx *sql.Tx, authorTeam map[string]string) (map[string][]string, error) {
 	teamSet := make(map[string]struct{})
 	for _, t := range authorTeam {
 		teamSet[t] = struct{}{}
@@ -199,15 +273,20 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		teamNames = nil
 	}
 
-	query, args = buildInClause(`
+	query, args := buildInClause(`
         SELECT id, team_name
         FROM users
         WHERE is_active = true AND team_name IN (`, teamNames)
 
-	rows, err = tx.QueryContext(ctx, query, args...)
+	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		return result, fmt.Errorf("load active candidates: %w", err)
+		return nil, fmt.Errorf("load active candidates: %w", err)
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	candidatesByTeam := make(map[string][]string)
 	for rows.Next() {
@@ -216,16 +295,17 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 			teamName string
 		)
 		if err := rows.Scan(&id, &teamName); err != nil {
-			rows.Close()
-			return result, fmt.Errorf("scan candidate: %w", err)
+			return nil, fmt.Errorf("scan candidate: %w", err)
 		}
 		candidatesByTeam[teamName] = append(candidatesByTeam[teamName], id)
 	}
 	if err := rows.Err(); err != nil {
-		return result, fmt.Errorf("iterate candidates: %w", err)
+		return nil, fmt.Errorf("iterate candidates: %w", err)
 	}
-	rows.Close()
+	return candidatesByTeam, nil
+}
 
+func (r *PRRepo) calculateNewReviewers(prMap map[string]*prInfo, authorTeam map[string]string, candidatesByTeam map[string][]string) map[string][]string {
 	newReviewersByPR := make(map[string][]string, len(prMap))
 
 	for prID, info := range prMap {
@@ -265,12 +345,16 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
 		newReviewersByPR[prID] = newReviewers
 	}
 
+	return newReviewersByPR
+}
+
+func (r *PRRepo) updatePRReviewers(ctx context.Context, tx *sql.Tx, newReviewersByPR map[string][]string) error {
 	for prID, reviewers := range newReviewersByPR {
 		if _, err := tx.ExecContext(ctx,
 			`DELETE FROM pull_request_reviewers WHERE pr_id = $1`,
 			prID,
 		); err != nil {
-			return result, fmt.Errorf("delete old reviewers for pr %s: %w", prID, err)
+			return fmt.Errorf("delete old reviewers for pr %s: %w", prID, err)
 		}
 
 		for _, reviewerID := range reviewers {
@@ -279,18 +363,11 @@ func (r *PRRepo) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName 
                  VALUES ($1, $2)`,
 				prID, reviewerID,
 			); err != nil {
-				return result, fmt.Errorf("insert new reviewer %s for pr %s: %w", reviewerID, prID, err)
+				return fmt.Errorf("insert new reviewer %s for pr %s: %w", reviewerID, prID, err)
 			}
 		}
 	}
-
-	result.UpdatedPullRequests = len(newReviewersByPR)
-
-	if err := tx.Commit(); err != nil {
-		return result, fmt.Errorf("commit deactivate team tx: %w", err)
-	}
-
-	return result, nil
+	return nil
 }
 
 func buildInClause(prefix string, ids []string) (string, []any) {

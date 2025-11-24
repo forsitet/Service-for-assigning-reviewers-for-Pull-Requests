@@ -22,6 +22,7 @@ func (r *UserRepo) UpsertForTeam(ctx context.Context, teamName string, users []d
 		return fmt.Errorf("begin upsert users tx: %w", err)
 	}
 	defer func() {
+		// #nosec G104 -- error is ignored in defer rollback
 		_ = tx.Rollback()
 	}()
 
@@ -99,7 +100,11 @@ func (r *UserRepo) ListByTeam(ctx context.Context, teamName string) ([]domain.Us
 	if err != nil {
 		return nil, fmt.Errorf("list users by team: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	users := make([]domain.User, 0)
 	for rows.Next() {

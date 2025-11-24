@@ -14,4 +14,3 @@ type MockUserPRRepository struct {
 func (m *MockUserPRRepository) ListByReviewer(ctx context.Context, userID string) ([]domain.PullRequest, error) {
 	return m.ListByReviewerResult, m.ListByReviewerErr
 }
-

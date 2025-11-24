@@ -224,8 +224,8 @@ func pickRandomSubset(ids []string, max int) []string {
 		return out
 	}
 
-	src := rand.NewSource(time.Now().UnixNano())
-	r := rand.New(src)
+	// #nosec G404 -- non-cryptographic random is acceptable for reviewer selection
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	pool := make([]string, len(ids))
 	copy(pool, ids)

@@ -65,14 +65,14 @@ func (s *Server) writeUnknownError(w http.ResponseWriter, message string) {
 	s.writeJSON(w, http.StatusInternalServerError, resp)
 }
 
-func (s *Server) handleError(w http.ResponseWriter, err error, defaultStatus int) {
+func (s *Server) handleError(w http.ResponseWriter, err error) {
 	if err == nil {
 		return
 	}
 
 	var de *domain.DomainError
 	if errors.As(err, &de) {
-		status := defaultStatus
+		status := http.StatusInternalServerError
 
 		switch de.Code {
 		case domain.ErrorCodeTeamExists:
@@ -97,7 +97,7 @@ func (s *Server) handleError(w http.ResponseWriter, err error, defaultStatus int
 	}
 
 	s.logger.Error("unexpected error", "error", err)
-	s.writeUnknownError(w, "internal server error")
+	s.writeDomainError(w, http.StatusInternalServerError, domain.ErrorCodeNotFound, "internal server error")
 }
 
 func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {

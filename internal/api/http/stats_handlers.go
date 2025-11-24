@@ -25,7 +25,7 @@ func (s *Server) HandleStatsAssignments(w http.ResponseWriter, r *http.Request) 
 
 	byUser, byPR, err := s.app.Stats.GetAssignmentStats(ctx)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 

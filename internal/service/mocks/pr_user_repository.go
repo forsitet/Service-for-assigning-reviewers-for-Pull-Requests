@@ -20,4 +20,3 @@ func (m *MockPRUserRepository) GetByID(ctx context.Context, id string) (*domain.
 func (m *MockPRUserRepository) ListByTeam(ctx context.Context, teamName string) ([]domain.User, error) {
 	return m.ListByTeamResult, m.ListByTeamErr
 }
-

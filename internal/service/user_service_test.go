@@ -11,12 +11,12 @@ import (
 
 func TestUserService_SetActive(t *testing.T) {
 	tests := []struct {
-		name          string
-		userID        string
-		active        bool
-		mockUser      *domain.User
-		mockSetErr    error
-		wantErr       bool
+		name           string
+		userID         string
+		active         bool
+		mockUser       *domain.User
+		mockSetErr     error
+		wantErr        bool
 		validateResult func(t *testing.T, user *domain.User)
 	}{
 		{
@@ -57,18 +57,18 @@ func TestUserService_SetActive(t *testing.T) {
 			},
 		},
 		{
-			name:      "ошибка при установке статуса",
-			userID:    "user-1",
-			active:    true,
+			name:       "ошибка при установке статуса",
+			userID:     "user-1",
+			active:     true,
 			mockSetErr: errors.New("database error"),
-			wantErr:   true,
+			wantErr:    true,
 		},
 		{
-			name:      "пользователь не найден",
-			userID:    "user-999",
-			active:    true,
+			name:       "пользователь не найден",
+			userID:     "user-999",
+			active:     true,
 			mockSetErr: errors.New("user not found"),
-			wantErr:   true,
+			wantErr:    true,
 		},
 	}
 
@@ -104,11 +104,11 @@ func TestUserService_SetActive(t *testing.T) {
 
 func TestUserService_ListAssignedPullRequests(t *testing.T) {
 	tests := []struct {
-		name          string
-		userID        string
-		mockPRs       []domain.PullRequest
-		mockListErr   error
-		wantErr       bool
+		name           string
+		userID         string
+		mockPRs        []domain.PullRequest
+		mockListErr    error
+		wantErr        bool
 		validateResult func(t *testing.T, prs []domain.PullRequest)
 	}{
 		{
@@ -150,8 +150,8 @@ func TestUserService_ListAssignedPullRequests(t *testing.T) {
 			},
 		},
 		{
-			name:   "пустой список PR",
-			userID: "user-1",
+			name:    "пустой список PR",
+			userID:  "user-1",
 			mockPRs: []domain.PullRequest{},
 			wantErr: false,
 			validateResult: func(t *testing.T, prs []domain.PullRequest) {
@@ -193,9 +193,10 @@ func TestUserService_ListAssignedPullRequests(t *testing.T) {
 				mergedCount := 0
 				openCount := 0
 				for _, pr := range prs {
-					if pr.Status == domain.PRStatusMerged {
+					switch pr.Status {
+					case domain.PRStatusMerged:
 						mergedCount++
-					} else if pr.Status == domain.PRStatusOpen {
+					case domain.PRStatusOpen:
 						openCount++
 					}
 				}
@@ -235,4 +236,3 @@ func TestUserService_ListAssignedPullRequests(t *testing.T) {
 		})
 	}
 }
-

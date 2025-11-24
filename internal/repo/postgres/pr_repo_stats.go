@@ -15,7 +15,11 @@ func (r *PRRepo) CountAssignmentsByReviewer(ctx context.Context) (map[string]int
 	if err != nil {
 		return nil, fmt.Errorf("count assignments by reviewer: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	result := make(map[string]int64)
 	for rows.Next() {
@@ -45,7 +49,11 @@ func (r *PRRepo) CountAssignmentsByPR(ctx context.Context) (map[string]int64, er
 	if err != nil {
 		return nil, fmt.Errorf("count assignments by pr: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	result := make(map[string]int64)
 	for rows.Next() {

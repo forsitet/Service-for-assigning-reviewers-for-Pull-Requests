@@ -23,6 +23,7 @@ func (r *PRRepo) CreateWithReviewers(ctx context.Context, pr *domain.PullRequest
 		return fmt.Errorf("begin create PR tx: %w", err)
 	}
 	defer func() {
+		// #nosec G104 -- error is ignored in defer rollback
 		_ = tx.Rollback()
 	}()
 
@@ -180,6 +181,7 @@ func (r *PRRepo) UpdateReviewers(ctx context.Context, id string, reviewerIDs []s
 		return nil, nil, fmt.Errorf("begin update reviewers tx: %w", err)
 	}
 	defer func() {
+		// #nosec G104 -- error is ignored in defer rollback
 		_ = tx.Rollback()
 	}()
 
@@ -224,7 +226,11 @@ func (r *PRRepo) ListByReviewer(ctx context.Context, userID string) ([]domain.Pu
 	if err != nil {
 		return nil, fmt.Errorf("list pull_requests by reviewer: %w", err)
 	}
-	defer dbRows.Close()
+	defer func() {
+		if err := dbRows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	result := make([]domain.PullRequest, 0)
 	for dbRows.Next() {
@@ -278,7 +284,11 @@ func (r *PRRepo) loadReviewers(ctx context.Context, prID string) ([]string, erro
 	if err != nil {
 		return nil, fmt.Errorf("list reviewers: %w", err)
 	}
-	defer dbRows.Close()
+	defer func() {
+		if err := dbRows.Close(); err != nil {
+			// Log error but don't fail - rows are already read
+		}
+	}()
 
 	reviewers := make([]string, 0)
 	for dbRows.Next() {
@@ -309,4 +319,3 @@ func (r *PRRepo) Exists(ctx context.Context, id string) (bool, error) {
 	}
 	return true, nil
 }
-

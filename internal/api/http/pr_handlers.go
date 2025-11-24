@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/api/openapi"
@@ -20,7 +21,11 @@ type prResponse struct {
 }
 
 func (s *Server) HandlePullRequestCreate(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error in HandlePullRequestCreate", "error:", err)
+		}
+	}()
 	var req createPRRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
@@ -28,7 +33,7 @@ func (s *Server) HandlePullRequestCreate(w http.ResponseWriter, r *http.Request)
 	}
 	pr, err := s.app.PR.CreatePullRequest(r.Context(), req.PullRequestID, req.PullRequestName, req.AuthorID)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 	resp := prResponse{
@@ -42,7 +47,11 @@ type mergePRRequest struct {
 }
 
 func (s *Server) HandlePullRequestMerge(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error closing body in HandlePullRequestMerge", "error", err)
+		}
+	}()
 	var req mergePRRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
@@ -51,7 +60,7 @@ func (s *Server) HandlePullRequestMerge(w http.ResponseWriter, r *http.Request) 
 
 	pr, err := s.app.PR.MergePullRequest(r.Context(), req.PullRequestID)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 	resp := prResponse{
@@ -71,7 +80,11 @@ type reassignPRResponse struct {
 }
 
 func (s *Server) HandlePullRequestReassign(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error closing body in HandlePullRequestReassign", "error", err)
+		}
+	}()
 	var req reassignPRRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
@@ -79,7 +92,7 @@ func (s *Server) HandlePullRequestReassign(w http.ResponseWriter, r *http.Reques
 	}
 	updated, err := s.app.PR.ReassignReviewer(r.Context(), req.PullRequestID, req.OldUserID)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 	replacedBy := ""

@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/api/openapi"
@@ -14,7 +15,11 @@ type createTeamResponse struct {
 }
 
 func (s *Server) HandleTeamAdd(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error closing body in HandleTeamAdd", "error", err)
+		}
+	}()
 	var req openapi.Team
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
@@ -25,7 +30,7 @@ func (s *Server) HandleTeamAdd(w http.ResponseWriter, r *http.Request) {
 
 	created, err := s.app.Team.CreateTeam(r.Context(), domainTeam.Name, domainTeam.Members)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 
@@ -44,7 +49,7 @@ func (s *Server) HandleTeamGet(w http.ResponseWriter, r *http.Request) {
 
 	team, err := s.app.Team.GetTeam(r.Context(), teamName)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 
@@ -63,7 +68,11 @@ type deactivateTeamResponse struct {
 }
 
 func (s *Server) HandleTeamDeactivate(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error closing body in HandleTeamDeactivate", "error", err)
+		}
+	}()
 
 	var req deactivateTeamRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -77,7 +86,7 @@ func (s *Server) HandleTeamDeactivate(w http.ResponseWriter, r *http.Request) {
 
 	res, err := s.app.PR.DeactivateTeamAndReassignOpenPRs(r.Context(), req.TeamName)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 

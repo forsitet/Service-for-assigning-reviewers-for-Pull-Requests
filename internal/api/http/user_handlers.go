@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/forsitet/Service-for-assigning-reviewers-for-Pull-Requests/api/openapi"
@@ -19,7 +20,11 @@ type userResponse struct {
 }
 
 func (s *Server) HandleUserSetIsActive(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+	defer func() {
+		if err := r.Body.Close(); err != nil {
+			slog.Debug("error closing body in HandleUserSetIsActive", "error", err)
+		}
+	}()
 	var req setUserActiveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		s.writeDomainError(w, http.StatusBadRequest, domain.ErrorCodeNotFound, "invalid JSON body")
@@ -27,7 +32,7 @@ func (s *Server) HandleUserSetIsActive(w http.ResponseWriter, r *http.Request) {
 	}
 	user, err := s.app.User.SetActive(r.Context(), req.UserID, req.IsActive)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 	resp := userResponse{
@@ -50,7 +55,7 @@ func (s *Server) HandleUserGetReview(w http.ResponseWriter, r *http.Request) {
 
 	prs, err := s.app.User.ListAssignedPullRequests(r.Context(), userID)
 	if err != nil {
-		s.handleError(w, err, http.StatusInternalServerError)
+		s.handleError(w, err)
 		return
 	}
 

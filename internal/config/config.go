@@ -61,6 +61,7 @@ func (db DatabaseConfig) ConnString() string {
 }
 
 func load(path string) (*Config, error) {
+	// #nosec G304 -- config file path is provided via command line flag
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return &Config{}, fmt.Errorf("read config file %s: %w", path, err)

@@ -22,7 +22,7 @@ func main() {
 	cfg, err := config.ParseConfig()
 	if err != nil {
 		logger.Error("Failed to load config", "error", err.Error())
-		os.Exit(1)
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -31,7 +31,7 @@ func main() {
 	db, err := postgres.NewDB(ctx, cfg.DB.ConnString(), logger)
 	if err != nil {
 		logger.Error("failed to connect to db", "error", err.Error())
-		os.Exit(1)
+		return
 	}
 
 	defer func() {
@@ -41,7 +41,7 @@ func main() {
 	}()
 	if err := postgres.RunMigrations(ctx, db, logger); err != nil {
 		logger.Error("failed to init db schema", "error", err.Error())
-		os.Exit(1)
+		return
 	}
 
 	teamRepo := postgres.NewTeamRepo(db)

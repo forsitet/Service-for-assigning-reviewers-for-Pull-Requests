@@ -24,6 +24,7 @@ func NewDB(ctx context.Context, connString string, logger *slog.Logger) (*sql.DB
 	defer cancel()
 
 	if err := db.PingContext(pingCtx); err != nil {
+		// #nosec G104 -- error is ignored as we're returning an error anyway
 		_ = db.Close()
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
