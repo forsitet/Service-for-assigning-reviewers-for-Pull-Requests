@@ -16,6 +16,7 @@ type PRRepository interface {
 	UpdateReviewers(ctx context.Context, id string, reviewerIDs []string) (*domain.PullRequest, []string, error)
 	ListByReviewer(ctx context.Context, userID string) ([]domain.PullRequest, error)
 	Exists(ctx context.Context, id string) (bool, error)
+	DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName string) (domain.TeamDeactivationResult, error)
 }
 
 type PRUserRepository interface {
@@ -156,6 +157,10 @@ func (s *PRService) ReassignReviewer(
 	updated.AssignedReviewers = updatedReviewers
 
 	return updated, nil
+}
+
+func (s *PRService) DeactivateTeamAndReassignOpenPRs(ctx context.Context, teamName string) (domain.TeamDeactivationResult, error) {
+	return s.prs.DeactivateTeamAndReassignOpenPRs(ctx, teamName)
 }
 
 func selectInitialReviewers(authorID string, members []domain.User) []string {

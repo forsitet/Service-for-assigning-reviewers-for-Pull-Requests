@@ -70,6 +70,30 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TeamMember'
+    TeamDeactivateRequest:
+      type: object
+      properties:
+        team_name:
+          type: string
+      required:
+        - team_name
+
+    TeamDeactivateResponse:
+      type: object
+      properties:
+        team_name:
+          type: string
+        deactivated_users:
+          type: integer
+          format: int32
+        updated_pull_requests:
+          type: integer
+          format: int32
+      required:
+        - team_name
+        - deactivated_users
+        - updated_pull_requests
+
     User:
       type: object
       required: [ user_id, username, team_name, is_active ]
@@ -199,6 +223,43 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
+  /team/deactivate:
+    post:
+      tags: [Teams]
+      summary: Deactivate all users in team and safely reassign open PR reviewers
+      operationId: deactivateTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamDeactivateRequest'
+      responses:
+        '200':
+          description: Deactivation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamDeactivateResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
 
   /users/setIsActive:
     post:
